@@ -377,7 +377,7 @@
   <span class="header-badge">SDEL</span>
   <div class="header-info">
     <div class="header-nom">{{ article.nom }}</div>
-    <div class="header-ref">{{ article.reference }}</div>
+    <div class="header-ref">{{ article.ref_constructeur }} · {{ article.ref_fournisseur }}</div>
   </div>
 </header>
 
@@ -434,13 +434,19 @@
       </div>
     </div>
     <div class="info-item">
-      <div class="info-lbl">🏷 Catégorie</div>
-      <div class="info-val {% if not article.categorie_nom %}vide{% endif %}">
-        {{ article.categorie_nom or 'Aucune' }}
+      <div class="info-lbl">🔧 Réf. Constructeur</div>
+      <div class="info-val {% if not article.ref_constructeur %}vide{% endif %}">
+        {{ article.ref_constructeur or 'Non renseigné' }}
       </div>
     </div>
     <div class="info-item">
-      <div class="info-lbl">📦 Fournisseur</div>
+      <div class="info-lbl">📦 Réf. Fournisseur</div>
+      <div class="info-val {% if not article.ref_fournisseur %}vide{% endif %}">
+        {{ article.ref_fournisseur or 'Non renseigné' }}
+      </div>
+    </div>
+    <div class="info-item">
+      <div class="info-lbl">🏭 Fournisseur</div>
       <div class="info-val {% if not article.fournisseur %}vide{% endif %}">
         {{ article.fournisseur or 'Non renseigné' }}
       </div>
