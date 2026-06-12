@@ -59,6 +59,15 @@
       </select>
     </div>
     <div class="form-group">
+      <label for="ref_fournisseur">Réf. Fournisseur</label>
+      <select id="ref_fournisseur" name="ref_fournisseur">
+        <option value="">Toutes</option>
+        {% for r in refs_fournisseur %}
+        <option value="{{ r }}" {% if filtre_ref_fournisseur == r %}selected{% endif %}>{{ r }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
       <label for="fournisseur">Fournisseur</label>
       <select id="fournisseur" name="fournisseur">
         <option value="">Tous les fournisseurs</option>
