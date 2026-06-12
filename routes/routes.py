@@ -134,12 +134,14 @@ def inventaire():
     filtre_magasin   = request.args.get("magasin", "")
     filtre_fournisseur = request.args.get("fournisseur", "")
     filtre_ref_constructeur = request.args.get("ref_constructeur", "")
+    filtre_ref_fournisseur = request.args.get("ref_fournisseur", "")
 
     articles = get_tous_articles()
 
-    magasins    = sorted({a["magasin"]    for a in articles if a.get("magasin")})
-    fournisseurs = sorted({a["fournisseur"] for a in articles if a.get("fournisseur")})
+    magasins          = sorted({a["magasin"]          for a in articles if a.get("magasin")})
+    fournisseurs      = sorted({a["fournisseur"]      for a in articles if a.get("fournisseur")})
     refs_constructeur = sorted({a["ref_constructeur"] for a in articles if a.get("ref_constructeur")})
+    refs_fournisseur  = sorted({a["ref_fournisseur"]  for a in articles if a.get("ref_fournisseur")})
 
     if recherche:
         articles = [a for a in articles if
@@ -152,6 +154,8 @@ def inventaire():
                     recherche in (a.get("fournisseur") or "").lower()]
     if filtre_ref_constructeur:
         articles = [a for a in articles if a.get("ref_constructeur") == filtre_ref_constructeur]
+    if filtre_ref_fournisseur:
+        articles = [a for a in articles if a.get("ref_fournisseur") == filtre_ref_fournisseur]
     if filtre_magasin:
         articles = [a for a in articles if a.get("magasin") == filtre_magasin]
     if filtre_fournisseur:
@@ -163,10 +167,11 @@ def inventaire():
 
     return render_template("inventaire.html",
         articles=articles, magasins=magasins, fournisseurs=fournisseurs,
-        refs_constructeur=refs_constructeur,
+        refs_constructeur=refs_constructeur, refs_fournisseur=refs_fournisseur,
         recherche=recherche, filtre_statut=filtre_statut,
         filtre_magasin=filtre_magasin, filtre_fournisseur=filtre_fournisseur,
-        filtre_ref_constructeur=filtre_ref_constructeur)
+        filtre_ref_constructeur=filtre_ref_constructeur,
+        filtre_ref_fournisseur=filtre_ref_fournisseur)
 
 
 @main.route("/inventaire/ajouter", methods=["GET", "POST"])
