@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Importer Excel — SDEL Inventory{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <h1>Importer un <span>Excel</span></h1>
+  <a href="{{ url_for('main.inventaire') }}" class="btn btn-secondary">← Retour</a>
+</div>
+
+<div style="max-width:700px;">
+
+  <div class="card" style="margin-bottom:1.25rem;">
+    <div class="card-title">Règles d'import</div>
+    <p style="font-size:0.875rem; color:var(--gris-moyen); margin-bottom:0.75rem;">
+      Le fichier Excel doit avoir ces colonnes en première ligne (dans n'importe quel ordre) :
+    </p>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Colonne</th>
+            <th>Obligatoire</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td style="font-family:var(--police-mono); font-size:0.8rem;">ref_constructeur</td><td><span class="badge badge-rupture">Oui</span></td><td style="font-size:0.82rem;">Identifiant unique — sert à détecter les doublons</td></tr>
+          <tr><td style="font-family:var(--police-mono); font-size:0.8rem;">ref_fournisseur</td><td><span class="badge badge-rupture">Oui</span></td><td style="font-size:0.82rem;">Référence fournisseur</td></tr>
+          <tr><td style="font-family:var(--police-mono); font-size:0.8rem;">nom</td><td><span class="badge badge-rupture">Oui</span></td><td style="font-size:0.82rem;">Nom de l'article</td></tr>
+          <tr><td style="font-family:var(--police-mono); font-size:0.8rem;">quantite</td><td><span class="badge badge-ok">Non</span></td><td style="font-size:0.82rem;">Si l'article existe déjà → quantité ajoutée au stock</td></tr>
+          <tr><td style="font-family:var(--police-mono); font-size:0.8rem;">quantite_min</td><td><span class="badge badge-ok">Non</span></td><td style="font-size:0.82rem;">Seuil d'alerte (défaut : 5)</td></tr>
+          <tr><td style="font-family:var(--police-mono); font-size:0.8rem;">unite</td><td><span class="badge badge-ok">Non</span></td><td style="font-size:0.82rem;">Unité (défaut : unité)</td></tr>
+          <tr><td style="font-family:var(--police-mono); font-size:0.8rem;">description</td><td><span class="badge badge-ok">Non</span></td><td style="font-size:0.82rem;">Description libre</td></tr>
+          <tr><td style="font-family:var(--police-mono); font-size:0.8rem;">emplacement</td><td><span class="badge badge-ok">Non</span></td><td style="font-size:0.82rem;">Emplacement physique</td></tr>
+          <tr><td style="font-family:var(--police-mono); font-size:0.8rem;">magasin</td><td><span class="badge badge-ok">Non</span></td><td style="font-size:0.82rem;">Nom du magasin / dépôt</td></tr>
+          <tr><td style="font-family:var(--police-mono); font-size:0.8rem;">fournisseur</td><td><span class="badge badge-ok">Non</span></td><td style="font-size:0.82rem;">Nom du fournisseur</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="background:#FFF8E1; border-left:3px solid var(--orange); padding:0.6rem 0.75rem; font-size:0.8rem; margin-top:1rem; border-radius:0 2px 2px 0;">
+      <strong>Comportement :</strong> si un article avec la même <code>ref_constructeur</code> existe déjà,
+      la quantité indiquée est <strong>ajoutée</strong> au stock existant. Sinon l'article est créé.
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Choisir le fichier</div>
+    <form method="POST" action="{{ url_for('main.importer_excel') }}" enctype="multipart/form-data">
+      <div class="form-group">
+        <label for="fichier">Fichier Excel (.xlsx)</label>
+        <input type="file" id="fichier" name="fichier" accept=".xlsx" required
+               style="padding:8px; border:2px solid var(--gris-clair); border-radius:3px; width:100%;">
+      </div>
+      <div style="display:flex; gap:0.75rem; margin-top:1rem;">
+        <button type="submit" class="btn btn-primary">↑ Importer</button>
+        <a href="{{ url_for('main.exporter_excel') }}" class="btn btn-secondary">
+          ↓ Télécharger un modèle Excel
+        </a>
+      </div>
+    </form>
+  </div>
+
+</div>
+
+{% endblock %}

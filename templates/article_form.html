@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+{% block title %}
+  {% if mode == 'ajouter' %}Nouvel article{% else %}Modifier — {{ article.nom }}{% endif %} — SDEL Inventory
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+  .form-wrapper { max-width: 800px; }
+  .section-tabs { display: flex; margin-bottom: 1.5rem; border-bottom: 2px solid var(--gris-clair); }
+  .tab-btn { padding: 10px 20px; background: none; border: none; font-family: var(--police-titre); font-size: 0.9rem; font-weight: 600; cursor: pointer; color: var(--gris-moyen); border-bottom: 3px solid transparent; margin-bottom: -2px; transition: color 0.15s, border-color 0.15s; }
+  .tab-btn.active { color: var(--orange); border-bottom-color: var(--orange); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  .stock-controls { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+  .stock-qty-display { text-align: center; background: var(--noir); color: var(--blanc); padding: 1rem 2rem; border-radius: 4px; min-width: 120px; }
+  .stock-qty-display .qty-big { font-family: var(--police-mono); font-size: 2.5rem; font-weight: 700; line-height: 1; }
+  .stock-qty-display .qty-unit { font-size: 0.8rem; color: #AAA; font-family: var(--police-mono); margin-top: 4px; }
+  .quick-btns { display: flex; flex-direction: column; gap: 0.5rem; }
+  .quick-btns button { padding: 6px 14px; border: 2px solid var(--gris-clair); background: white; border-radius: 3px; font-family: var(--police-mono); font-weight: 600; cursor: pointer; font-size: 0.85rem; transition: all 0.15s; }
+  .quick-btns button.plus { color: var(--vert); border-color: var(--vert); }
+  .quick-btns button.moins { color: var(--rouge); border-color: var(--rouge); }
+  .mouvement-type { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+  .mouvement-type label { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-family: var(--police-titre); text-transform: none; letter-spacing: 0; color: var(--noir); cursor: pointer; padding: 7px 14px; border: 2px solid var(--gris-clair); border-radius: 3px; transition: all 0.15s; }
+  .mouvement-type input[type=radio] { display: none; }
+  .mouvement-type input[type=radio]:checked + label { border-color: var(--orange); background: rgba(245,166,35,0.1); font-weight: 600; }
+  .article-meta { display: flex; gap: 1rem; align-items: center; background: var(--noir); color: var(--blanc); padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1.5rem; font-size: 0.85rem; flex-wrap: wrap; }
+  .article-meta .meta-ref { font-family: var(--police-mono); background: var(--orange); color: var(--noir); padding: 3px 8px; font-weight: 600; font-size: 0.8rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <h1>{% if mode == 'ajouter' %}Nouvel <span>article</span>{% else %}Modifier <span>{{ article.nom }}</span>{% endif %}</h1>
+  <a href="{{ url_for('main.inventaire') }}" class="btn btn-secondary">← Retour</a>
+</div>
+
+<div class="form-wrapper">
+
+  {% if mode == 'modifier' %}
+  <div class="article-meta">
+    <span class="meta-ref">{{ article.ref_constructeur }}</span>
+    <span style="color:var(--orange); font-family:var(--police-mono); font-size:0.8rem;">{{ article.ref_fournisseur }}</span>
+    <span>{{ article.nom }}</span>
+    <span style="margin-left:auto; color:#AAA; font-family:var(--police-mono); font-size:0.75rem;">Modifié le {{ article.updated_at[:10] }}</span>
+  </div>
+  <div class="section-tabs">
+    <button class="tab-btn active" onclick="switchTab('stock', this)">Modifier le stock</button>
+    <button class="tab-btn" onclick="switchTab('infos', this)">Informations article</button>
+  </div>
+  {% endif %}
+
+  {% if mode == 'modifier' %}
+  <div id="panel-stock" class="tab-panel active">
+    <div class="card">
+      <div class="card-title">Ajustement du stock</div>
+      <div class="stock-controls">
+        <div class="stock-qty-display">
+          <div class="qty-big" id="qty-display">{{ article.quantite }}</div>
+          <div class="qty-unit">{{ article.unite }}</div>
+        </div>
+        <div class="quick-btns">
+          <button type="button" class="plus"  onclick="quickAdjust(+1)">+1</button>
+          <button type="button" class="plus"  onclick="quickAdjust(+5)">+5</button>
+          <button type="button" class="moins" onclick="quickAdjust(-1)">-1</button>
+          <button type="button" class="moins" onclick="quickAdjust(-5)">-5</button>
+        </div>
+        <div style="flex:1; min-width:200px;">
+          <label>Nouvelle quantité</label>
+          <input type="number" id="qty-input" min="0" value="{{ article.quantite }}"
+                 oninput="document.getElementById('qty-display').textContent = this.value || 0">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Type de mouvement</label>
+        <div class="mouvement-type">
+          <input type="radio" name="_type_preview" id="t-entree" value="entree" checked>
+          <label for="t-entree">📦 Entrée</label>
+          <input type="radio" name="_type_preview" id="t-sortie" value="sortie">
+          <label for="t-sortie">📤 Sortie</label>
+          <input type="radio" name="_type_preview" id="t-correction" value="correction">
+          <label for="t-correction">✏️ Correction</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="commentaire">Commentaire (optionnel)</label>
+        <input type="text" id="commentaire-input" placeholder="Ex: livraison, prise chantier…">
+      </div>
+      <form method="POST" id="form-stock" action="{{ url_for('main.modifier_article_route', article_id=article.id) }}">
+        <input type="hidden" name="action" value="stock">
+        <input type="hidden" name="quantite" id="hidden-quantite" value="{{ article.quantite }}">
+        <input type="hidden" name="type_mouvement" id="hidden-type" value="entree">
+        <input type="hidden" name="commentaire" id="hidden-commentaire">
+        <button type="submit" class="btn btn-primary" onclick="prepareStockForm()">Valider le mouvement</button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  <div id="panel-infos" class="tab-panel {% if mode == 'ajouter' %}active{% endif %}">
+    <form method="POST"
+          action="{% if mode == 'ajouter' %}{{ url_for('main.ajouter_article') }}{% else %}{{ url_for('main.modifier_article_route', article_id=article.id) }}{% endif %}">
+      {% if mode == 'modifier' %}<input type="hidden" name="action" value="infos">{% endif %}
+
+      <div class="card">
+        <div class="card-title">Identification</div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="ref_constructeur">Réf. Constructeur *</label>
+            {% if mode == 'ajouter' %}
+            <input type="text" id="ref_constructeur" name="ref_constructeur"
+                   placeholder="Ex: ABB-XYZ-001"
+                   value="{{ request.form.get('ref_constructeur', '') }}" required>
+            {% else %}
+            <input type="text" value="{{ article.ref_constructeur }}" disabled
+                   style="background:#F5F5F5; color:var(--gris-moyen);">
+            {% endif %}
+          </div>
+          <div class="form-group">
+            <label for="ref_fournisseur">Réf. Fournisseur *</label>
+            <input type="text" id="ref_fournisseur" name="ref_fournisseur"
+                   placeholder="Ex: REX-001"
+                   value="{{ article.ref_fournisseur if mode == 'modifier' else request.form.get('ref_fournisseur', '') }}"
+                   required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="nom">Nom de l'article *</label>
+          <input type="text" id="nom" name="nom"
+                 placeholder="Ex: Câble H07V-K 2.5mm²"
+                 value="{{ article.nom if mode == 'modifier' else request.form.get('nom', '') }}" required>
+        </div>
+        <div class="form-group">
+          <label for="description">Description</label>
+          <textarea id="description" name="description"
+                    placeholder="Détails supplémentaires…">{{ article.description if mode == 'modifier' else request.form.get('description', '') }}</textarea>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:1rem;">
+        <div class="card-title">Stock</div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="unite">Unité</label>
+            <select id="unite" name="unite">
+              {% set unite_val = article.unite if mode == 'modifier' else request.form.get('unite', 'unité') %}
+              {% for u in ['unité', 'm', 'ml', 'cm', 'kg', 'g', 'L', 'boîte', 'rouleau', 'paire', 'lot'] %}
+              <option value="{{ u }}" {% if unite_val == u %}selected{% endif %}>{{ u }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% if mode == 'ajouter' %}
+          <div class="form-group">
+            <label for="quantite">Quantité initiale</label>
+            <input type="number" id="quantite" name="quantite" min="0"
+                   value="{{ request.form.get('quantite', 0) }}">
+          </div>
+          {% endif %}
+          <div class="form-group">
+            <label for="quantite_min">Seuil d'alerte (min.)</label>
+            <input type="number" id="quantite_min" name="quantite_min" min="0"
+                   value="{{ article.quantite_min if mode == 'modifier' else request.form.get('quantite_min', 5) }}">
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:1rem;">
+        <div class="card-title">Localisation & Fournisseur</div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="emplacement">Emplacement</label>
+            <input type="text" id="emplacement" name="emplacement"
+                   placeholder="Ex: Étagère A3, Local R+1"
+                   value="{{ article.emplacement if mode == 'modifier' else request.form.get('emplacement', '') }}">
+          </div>
+          <div class="form-group">
+            <label for="magasin">Magasin</label>
+            <input type="text" id="magasin" name="magasin"
+                   placeholder="Ex: Dépôt Central"
+                   value="{{ article.magasin if mode == 'modifier' else request.form.get('magasin', '') }}">
+          </div>
+          <div class="form-group">
+            <label for="fournisseur">Fournisseur</label>
+            <input type="text" id="fournisseur" name="fournisseur"
+                   placeholder="Ex: Rexel, Würth"
+                   value="{{ article.fournisseur if mode == 'modifier' else request.form.get('fournisseur', '') }}">
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:1.25rem; display:flex; gap:0.75rem;">
+        <button type="submit" class="btn btn-primary">
+          {% if mode == 'ajouter' %}Créer l'article{% else %}Enregistrer{% endif %}
+        </button>
+        <a href="{{ url_for('main.inventaire') }}" class="btn btn-secondary">Annuler</a>
+        {% if mode == 'modifier' and session.get('role') == 'admin' %}
+        <form method="POST" action="{{ url_for('main.supprimer_article_route', article_id=article.id) }}"
+              style="margin-left:auto;"
+              onsubmit="return confirm('Supprimer définitivement cet article ?')">
+          <button type="submit" class="btn btn-danger">Supprimer l'article</button>
+        </form>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function switchTab(panelId, btn) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('panel-' + panelId).classList.add('active');
+    btn.classList.add('active');
+  }
+  function quickAdjust(delta) {
+    const input = document.getElementById('qty-input');
+    const newVal = Math.max(0, (parseInt(input.value) || 0) + delta);
+    input.value = newVal;
+    document.getElementById('qty-display').textContent = newVal;
+  }
+  function prepareStockForm() {
+    document.getElementById('hidden-quantite').value = document.getElementById('qty-input').value || 0;
+    const t = document.querySelector('input[name="_type_preview"]:checked');
+    document.getElementById('hidden-type').value = t ? t.value : 'correction';
+    document.getElementById('hidden-commentaire').value = document.getElementById('commentaire-input').value;
+  }
+</script>
+{% endblock %}
