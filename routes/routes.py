@@ -581,3 +581,30 @@ def api_articles():
 @login_requis
 def api_stats():
     return jsonify(get_statistiques())
+
+
+@main.route("/admin/migration/fix-refs", methods=["GET"])
+@admin_requis
+def fix_refs():
+    """Migration one-shot : supprime la contrainte NOT NULL sur reference et vide la colonne."""
+    from database.db import get_connection, DATABASE_URL
+    conn = get_connection()
+    cursor = conn.cursor()
+    resultats = []
+    if DATABASE_URL:
+        # Sur PostgreSQL, on retire la contrainte NOT NULL sur reference
+        for sql in [
+            "ALTER TABLE articles ALTER COLUMN reference DROP NOT NULL",
+            "UPDATE articles SET reference = NULL",
+        ]:
+            try:
+                cursor.execute(sql)
+                conn.commit()
+                resultats.append(f"OK: {sql}")
+            except Exception as e:
+                conn.rollback()
+                resultats.append(f"SKIP: {sql} — {e}")
+    else:
+        resultats.append("SQLite — pas de migration nécessaire")
+    conn.close()
+    return "<br>".join(resultats) + "<br><br>Migration terminée. Tu peux maintenant créer des articles."
