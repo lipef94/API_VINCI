@@ -438,14 +438,15 @@ def _envoyer_alerte(article_row, nouvelle_quantite, operateur="Système", emplac
         if not destinataires:
             return
         envoyer_alerte_stock(
-            article_nom   = article_row.get("nom", ""),
-            article_ref   = article_row.get("ref_constructeur", ""),
-            quantite      = nouvelle_quantite,
-            quantite_min  = article_row.get("quantite_min", 0),
-            emplacement   = emplacement or article_row.get("emplacement", ""),
-            magasin       = article_row.get("magasin", ""),
-            operateur     = operateur,
-            destinataires = destinataires
+            article_nom    = article_row.get("nom", ""),
+            article_ref    = article_row.get("ref_constructeur", ""),
+            ref_fournisseur= article_row.get("ref_fournisseur", ""),
+            quantite       = nouvelle_quantite,
+            quantite_min   = article_row.get("quantite_min", 0),
+            emplacement    = emplacement or article_row.get("emplacement", ""),
+            magasin        = article_row.get("magasin", ""),
+            operateur      = operateur,
+            destinataires  = destinataires
         )
     except Exception as e:
         print(f"[MAIL] Erreur alerte : {e}")
