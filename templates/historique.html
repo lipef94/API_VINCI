@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}Historique — SDEL Inventory{% endblock %}
+
+{% block extra_styles %}
+<style>
+  .mvt-badge {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 2px;
+    font-size: 0.72rem;
+    font-family: var(--police-mono);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .mvt-entree     { background: #E8F5E9; color: var(--vert); }
+  .mvt-sortie     { background: #FFEBEE; color: var(--rouge); }
+  .mvt-correction { background: #FFF8E1; color: #E65100; }
+
+  .qty-change { font-family: var(--police-mono); font-weight: 600; font-size: 0.9rem; }
+  .qty-plus   { color: var(--vert); }
+  .qty-minus  { color: var(--rouge); }
+  .qty-neutral{ color: var(--orange); }
+
+  .arrow-cell { font-family: var(--police-mono); font-size: 0.8rem; color: var(--gris-moyen); white-space: nowrap; }
+  .empty-table { text-align: center; padding: 3rem; color: var(--gris-moyen); font-family: var(--police-mono); font-size: 0.85rem; }
+
+  .limite-bar {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    font-size: 0.8rem;
+    font-family: var(--police-mono);
+    color: var(--gris-moyen);
+  }
+  .limite-bar a {
+    padding: 3px 10px;
+    border: 1px solid var(--gris-clair);
+    border-radius: 2px;
+    text-decoration: none;
+    color: var(--gris-moyen);
+    transition: all 0.15s;
+  }
+  .limite-bar a:hover, .limite-bar a.active { border-color: var(--orange); color: var(--orange); }
+
+  .article-supprime {
+    color: var(--gris-moyen);
+    font-style: italic;
+    font-size: 0.78rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <h1>Historique des <span>mouvements</span></h1>
+  {% if session.get('role') == 'admin' %}
+  <form method="POST" action="{{ url_for('main.clear_historique_route') }}"
+        onsubmit="return confirm('Effacer tout l\'historique ? Cette action est irréversible.')">
+    <button type="submit" class="btn btn-danger">🗑 Effacer l'historique</button>
+  </form>
+  {% endif %}
+</div>
+
+<div class="limite-bar">
+  Afficher :
+  {% for n in [25, 50, 100, 250] %}
+  <a href="?limite={{ n }}" class="{% if limite == n %}active{% endif %}">{{ n }}</a>
+  {% endfor %}
+  derniers mouvements
+</div>
+
+<div class="table-container">
+  <table>
+    <thead>
+      <tr>
+        <th>Date / Heure</th>
+        <th>Article</th>
+        <th>Type</th>
+        <th>Variation</th>
+        <th>Avant → Après</th>
+        <th>Opérateur</th>
+        <th>Emplacement</th>
+        <th>Commentaire</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if historique %}
+        {% for m in historique %}
+        <tr>
+          <td style="font-family:var(--police-mono); font-size:0.78rem; white-space:nowrap; color:var(--gris-moyen);">
+            {{ m.created_at[:16] }}
+          </td>
+          <td>
+            {% if m.article_nom %}
+            <div style="font-weight:600; font-size:0.875rem;">{{ m.article_nom }}</div>
+            <div style="font-family:var(--police-mono); font-size:0.72rem; color:var(--gris-moyen);">
+              {{ m.article_ref or '' }}
+            </div>
+            {% else %}
+            <span class="article-supprime">— Article supprimé —</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="mvt-badge mvt-{{ m.type }}">{{ m.type }}</span>
+          </td>
+          <td>
+            {% set delta = m.quantite_apres - m.quantite_avant %}
+            {% if delta > 0 %}
+              <span class="qty-change qty-plus">+{{ "%.2f"|format(delta)|replace('.00','') }}</span>
+            {% elif delta < 0 %}
+              <span class="qty-change qty-minus">{{ "%.2f"|format(delta)|replace('.00','') }}</span>
+            {% else %}
+              <span class="qty-change qty-neutral">±0</span>
+            {% endif %}
+          </td>
+          <td class="arrow-cell">
+            {{ "%.2f"|format(m.quantite_avant)|replace('.00','') }}
+            →
+            {{ "%.2f"|format(m.quantite_apres)|replace('.00','') }}
+          </td>
+          <td style="font-size:0.82rem;">
+            {{ m.operateur_nom or m.user_nom or '—' }}
+          </td>
+          <td style="font-size:0.8rem; color:var(--gris-moyen); font-family:var(--police-mono);">
+            {{ m.emplacement or '—' }}
+          </td>
+          <td style="font-size:0.8rem; color:var(--gris-moyen); font-style:{% if not m.commentaire %}italic{% endif %};">
+            {{ m.commentaire or '—' }}
+          </td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="8" class="empty-table">Aucun mouvement enregistré.</td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

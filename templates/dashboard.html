@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — SDEL Inventory{% endblock %}
+
+{% block extra_styles %}
+<style>
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .stat-card {
+    background: var(--blanc);
+    border: 1px solid var(--gris-clair);
+    border-radius: 4px;
+    padding: 1.25rem;
+    border-top: 3px solid var(--gris-clair);
+    transition: transform 0.1s;
+  }
+  .stat-card:hover { transform: translateY(-2px); }
+  .stat-card.orange { border-top-color: var(--orange); }
+  .stat-card.rouge  { border-top-color: var(--rouge); }
+  .stat-card.vert   { border-top-color: var(--vert); }
+
+  .stat-label {
+    font-family: var(--police-mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--gris-moyen);
+    margin-bottom: 0.5rem;
+  }
+  .stat-value { font-size: 2.2rem; font-weight: 700; line-height: 1; margin-bottom: 0.25rem; }
+  .stat-sub { font-size: 0.75rem; color: var(--gris-moyen); }
+
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .alerte-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--gris-clair);
+    font-size: 0.875rem;
+  }
+  .alerte-item:last-child { border-bottom: none; }
+  .alerte-nom { font-weight: 600; }
+  .alerte-ref { font-family: var(--police-mono); font-size: 0.75rem; color: var(--gris-moyen); }
+
+  .historique-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--gris-clair);
+    font-size: 0.82rem;
+  }
+  .historique-item:last-child { border-bottom: none; }
+
+  .mvt-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+  .mvt-dot.entree    { background: var(--vert); }
+  .mvt-dot.sortie    { background: var(--rouge); }
+  .mvt-dot.correction { background: var(--orange); }
+
+  .mvt-article { font-weight: 600; }
+  .mvt-detail { color: var(--gris-moyen); font-size: 0.78rem; font-family: var(--police-mono); }
+
+  .empty-msg { text-align: center; padding: 2rem; color: var(--gris-moyen); font-size: 0.85rem; font-family: var(--police-mono); }
+
+  @media (max-width: 768px) { .dashboard-grid { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <h1>Tableau de <span>bord</span></h1>
+  <a href="{{ url_for('main.ajouter_article') }}" class="btn btn-primary">+ Nouvel article</a>
+</div>
+
+<div class="stats-grid">
+
+  <div class="stat-card orange">
+    <div class="stat-label">Articles total</div>
+    <div class="stat-value">{{ stats.total_articles }}</div>
+    <div class="stat-sub">dans l'inventaire</div>
+  </div>
+
+  <div class="stat-card rouge">
+    <div class="stat-label">Rupture de stock</div>
+    <div class="stat-value" style="color: var(--rouge)">{{ stats.rupture }}</div>
+    <div class="stat-sub">articles à zéro</div>
+  </div>
+
+  <div class="stat-card" style="border-top-color: #E65100;">
+    <div class="stat-label">Stock bas</div>
+    <div class="stat-value" style="color: #E65100">{{ stats.stock_bas }}</div>
+    <div class="stat-sub">sous le seuil minimum</div>
+  </div>
+
+  <div class="stat-card vert">
+    <div class="stat-label">Mouvements aujourd'hui</div>
+    <div class="stat-value" style="color: var(--vert)">{{ stats.mouvements_aujourd_hui }}</div>
+    <div class="stat-sub">opérations de stock</div>
+  </div>
+
+</div>
+
+<div class="dashboard-grid">
+
+  <div class="card">
+    <div class="card-title">⚠ Alertes stock</div>
+
+    {% if alertes %}
+      {% for a in alertes %}
+      <div class="alerte-item">
+        <div>
+          <div class="alerte-nom">{{ a.nom }}</div>
+          <div class="alerte-ref">{{ a.reference }}{% if a.emplacement %} · {{ a.emplacement }}{% endif %}{% if a.magasin %} · {{ a.magasin }}{% endif %}</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:0.5rem;">
+          <strong style="font-family:var(--police-mono); font-size:1rem;">
+            {{ a.quantite }} {{ a.unite }}
+          </strong>
+          {% if a.quantite == 0 %}
+            <span class="badge badge-rupture">Rupture</span>
+          {% else %}
+            <span class="badge badge-bas">Stock bas</span>
+          {% endif %}
+          {% if session.get('role') != 'lecteur' %}
+          <a href="{{ url_for('main.modifier_article_route', article_id=a.id) }}"
+             class="btn btn-sm btn-secondary">Modifier</a>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-msg">✓ Aucune alerte — tous les stocks sont corrects</div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-title">Derniers mouvements</div>
+
+    {% if historique %}
+      {% for m in historique %}
+      <div class="historique-item">
+        <div class="mvt-dot {{ m.type }}"></div>
+        <div>
+          <div class="mvt-article">{{ m.article_nom }}</div>
+          <div class="mvt-detail">
+            {{ m.type | upper }} &nbsp;
+            {% if m.quantite_apres > m.quantite_avant %}+{% else %}-{% endif %}{{ m.quantite }}
+            &nbsp;·&nbsp; {{ m.operateur_nom or m.user_nom or 'Système' }}
+            &nbsp;·&nbsp; {{ m.created_at[:16] }}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+      <div style="text-align:right; margin-top:0.75rem;">
+        <a href="{{ url_for('main.historique') }}" class="btn btn-sm btn-secondary">Voir tout →</a>
+      </div>
+    {% else %}
+      <div class="empty-msg">Aucun mouvement enregistré</div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

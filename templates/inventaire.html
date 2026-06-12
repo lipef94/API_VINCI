@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block title %}Inventaire — SDEL Inventory{% endblock %}
+
+{% block extra_styles %}
+<style>
+  .filters-bar {
+    display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap;
+    margin-bottom: 1.25rem; background: var(--blanc);
+    border: 1px solid var(--gris-clair); border-radius: 4px; padding: 1rem;
+  }
+  .filters-bar .form-group { margin-bottom: 0; flex: 1; min-width: 140px; }
+  .filters-bar input, .filters-bar select { padding: 8px 10px; font-size: 0.85rem; }
+  .result-count { font-family: var(--police-mono); font-size: 0.78rem; color: var(--gris-moyen); align-self: center; }
+  .qty-cell { font-family: var(--police-mono); font-weight: 600; font-size: 0.95rem; }
+  .qty-ok { color: var(--vert); }
+  .qty-bas { color: #E65100; }
+  .qty-rupture { color: var(--rouge); }
+  .ref-cell { font-family: var(--police-mono); font-size: 0.78rem; color: var(--gris-moyen); }
+  .action-cell { white-space: nowrap; }
+  .empty-table { text-align: center; padding: 3rem; color: var(--gris-moyen); font-family: var(--police-mono); font-size: 0.85rem; }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal-box { background: var(--blanc); border-top: 4px solid var(--orange); padding: 1.5rem; width: 100%; max-width: 360px; border-radius: 4px; text-align: center; }
+  .modal-box img { max-width: 280px; width: 100%; border: 1px solid var(--gris-clair); margin: 1rem auto; display: block; }
+  .modal-nom { font-weight: 700; font-size: 1rem; margin-bottom: 0.25rem; }
+  .modal-ref { font-family: var(--police-mono); font-size: 0.78rem; color: var(--gris-moyen); }
+  .btn-actions { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <h1>Inventaire <span>des stocks</span></h1>
+  <div style="display:flex; gap:0.5rem;">
+    {% if session.get('role') != 'lecteur' %}
+    <a href="{{ url_for('main.importer_excel') }}" class="btn btn-secondary">↑ Importer Excel</a>
+    <a href="{{ url_for('main.exporter_excel') }}" class="btn btn-secondary">↓ Exporter Excel</a>
+    <a href="{{ url_for('main.ajouter_article') }}" class="btn btn-primary">+ Nouvel article</a>
+    {% endif %}
+  </div>
+</div>
+
+<form method="GET" action="{{ url_for('main.inventaire') }}">
+  <div class="filters-bar">
+    <div class="form-group">
+      <label for="recherche">Recherche</label>
+      <input type="text" id="recherche" name="recherche"
+             placeholder="Nom, réf. constructeur, réf. fournisseur…"
+             value="{{ recherche }}">
+    </div>
+    <div class="form-group">
+      <label for="fournisseur">Fournisseur</label>
+      <select id="fournisseur" name="fournisseur">
+        <option value="">Tous les fournisseurs</option>
+        {% for f in fournisseurs %}
+        <option value="{{ f }}" {% if filtre_fournisseur == f %}selected{% endif %}>{{ f }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="magasin">Magasin</label>
+      <select id="magasin" name="magasin">
+        <option value="">Tous les magasins</option>
+        {% for m in magasins %}
+        <option value="{{ m }}" {% if filtre_magasin == m %}selected{% endif %}>{{ m }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="statut">Statut</label>
+      <select id="statut" name="statut">
+        <option value="">Tous</option>
+        <option value="bas"     {% if filtre_statut == 'bas' %}selected{% endif %}>Stock bas</option>
+        <option value="rupture" {% if filtre_statut == 'rupture' %}selected{% endif %}>Rupture</option>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary" style="align-self:flex-end;">Filtrer</button>
+    <a href="{{ url_for('main.inventaire') }}" class="btn btn-secondary" style="align-self:flex-end;">Réinitialiser</a>
+    <span class="result-count">{{ articles|length }} article(s)</span>
+  </div>
+</form>
+
+<div class="table-container">
+  <table>
+    <thead>
+      <tr>
+        <th>Réf. Constructeur</th>
+        <th>Réf. Fournisseur</th>
+        <th>Article</th>
+        <th>Fournisseur</th>
+        <th>Emplacement</th>
+        <th>Magasin</th>
+        <th>Quantité</th>
+        <th>Seuil min.</th>
+        <th>Statut</th>
+        {% if session.get('role') != 'lecteur' %}
+        <th>Actions</th>
+        {% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% if articles %}
+        {% for a in articles %}
+        <tr>
+          <td class="ref-cell">{{ a.ref_constructeur or '—' }}</td>
+          <td class="ref-cell">{{ a.ref_fournisseur or '—' }}</td>
+          <td>
+            <div style="font-weight:600;">{{ a.nom }}</div>
+            {% if a.description %}
+            <div style="font-size:0.75rem; color:var(--gris-moyen);">
+              {{ a.description[:60] }}{% if a.description|length > 60 %}…{% endif %}
+            </div>
+            {% endif %}
+          </td>
+          <td style="font-size:0.82rem;">{{ a.fournisseur or '—' }}</td>
+          <td style="font-size:0.82rem;">{{ a.emplacement or '—' }}</td>
+          <td style="font-size:0.82rem;">{{ a.magasin or '—' }}</td>
+          <td>
+            {% if a.quantite == 0 %}
+              <span class="qty-cell qty-rupture">{{ a.quantite }} {{ a.unite }}</span>
+            {% elif a.stock_bas %}
+              <span class="qty-cell qty-bas">{{ a.quantite }} {{ a.unite }}</span>
+            {% else %}
+              <span class="qty-cell qty-ok">{{ a.quantite }} {{ a.unite }}</span>
+            {% endif %}
+          </td>
+          <td class="ref-cell">{{ a.quantite_min }} {{ a.unite }}</td>
+          <td>
+            {% if a.quantite == 0 %}
+              <span class="badge badge-rupture">Rupture</span>
+            {% elif a.stock_bas %}
+              <span class="badge badge-bas">Stock bas</span>
+            {% else %}
+              <span class="badge badge-ok">OK</span>
+            {% endif %}
+          </td>
+          {% if session.get('role') != 'lecteur' %}
+          <td class="action-cell">
+            <div class="btn-actions">
+              <button type="button" class="btn btn-sm btn-secondary"
+                      onclick="ouvrirQR({{ a.id }}, '{{ a.nom|replace("'", "\\'") }}', '{{ a.ref_constructeur }}')">
+                ▦ QR
+              </button>
+              <a href="{{ url_for('main.modifier_article_route', article_id=a.id) }}"
+                 class="btn btn-sm btn-secondary">Modifier</a>
+              {% if session.get('role') == 'admin' %}
+              <form method="POST"
+                    action="{{ url_for('main.supprimer_article_route', article_id=a.id) }}"
+                    style="display:inline;"
+                    onsubmit="return confirm('Supprimer {{ a.nom }} ?')">
+                <button type="submit" class="btn btn-sm btn-danger">Supprimer</button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="10" class="empty-table">
+            Aucun article trouvé.
+            {% if recherche or filtre_statut or filtre_magasin or filtre_fournisseur %}
+              <a href="{{ url_for('main.inventaire') }}">Réinitialiser les filtres</a>
+            {% else %}
+              <a href="{{ url_for('main.ajouter_article') }}">Créer le premier article</a>
+            {% endif %}
+          </td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
+<div class="modal-overlay" id="modal-qr" onclick="if(event.target===this)fermerQR()">
+  <div class="modal-box">
+    <div style="font-family:var(--police-mono);font-size:0.75rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--gris-moyen);margin-bottom:0.25rem;">QR Code article</div>
+    <div class="modal-nom" id="qr-nom">—</div>
+    <div class="modal-ref" id="qr-ref">—</div>
+    <img id="qr-img" src="" alt="QR Code">
+    <div style="display:flex;gap:0.5rem;justify-content:center;margin-top:0.5rem;">
+      <a id="qr-dl" href="" download="" class="btn btn-primary">↓ Télécharger</a>
+      <button type="button" class="btn btn-secondary" onclick="fermerQR()">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function ouvrirQR(id, nom, ref) {
+    const url = '/qrcode/article/' + id + '.png';
+    document.getElementById('qr-nom').textContent = nom;
+    document.getElementById('qr-ref').textContent = ref;
+    document.getElementById('qr-img').src = url + '?t=' + Date.now();
+    document.getElementById('qr-dl').href = url;
+    document.getElementById('qr-dl').download = 'qr_' + ref + '.png';
+    document.getElementById('modal-qr').classList.add('open');
+  }
+  function fermerQR() {
+    document.getElementById('modal-qr').classList.remove('open');
+  }
+</script>
+
+{% endblock %}

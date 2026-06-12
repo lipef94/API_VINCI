@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inventaire SDEL — En temps réel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --orange:     #F5A623;
+      --noir:       #1A1A1A;
+      --gris-fonce: #2C2C2C;
+      --gris-moyen: #4A4A4A;
+      --gris-clair: #E8E8E8;
+      --blanc:      #FAFAFA;
+      --rouge:      #D32F2F;
+      --vert:       #388E3C;
+      --police-titre: 'IBM Plex Sans', sans-serif;
+      --police-mono:  'IBM Plex Mono', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--police-titre);
+      background: #F0F0F0;
+      color: var(--noir);
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--noir);
+      border-bottom: 3px solid var(--orange);
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .header-logo { display: flex; align-items: center; gap: 0.6rem; }
+    .header-badge {
+      background: var(--orange);
+      color: var(--noir);
+      font-family: var(--police-mono);
+      font-weight: 600;
+      font-size: 0.75rem;
+      padding: 3px 8px;
+      letter-spacing: 1px;
+    }
+    .header-title { color: var(--blanc); font-weight: 700; font-size: 0.95rem; }
+    .header-sub { color: #666; font-size: 0.65rem; font-family: var(--police-mono); }
+    .header-live { display: flex; align-items: center; gap: 6px; color: var(--vert); font-family: var(--police-mono); font-size: 0.72rem; }
+    .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--vert); animation: pulse 1.8s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    .stats-bar { display: flex; background: var(--gris-fonce); overflow-x: auto; }
+    .stat-item { flex: 1; min-width: 80px; padding: 0.6rem 1rem; text-align: center; border-right: 1px solid #444; }
+    .stat-item:last-child { border-right: none; }
+    .stat-val { font-family: var(--police-mono); font-weight: 600; font-size: 1.4rem; color: var(--blanc); line-height: 1; }
+    .stat-lbl { font-size: 0.65rem; color: #888; font-family: var(--police-mono); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 3px; }
+    .stat-item.rouge .stat-val { color: var(--rouge); }
+    .stat-item.orange .stat-val { color: var(--orange); }
+
+    /* Barre de recherche */
+    .search-bar {
+      background: var(--blanc);
+      border-bottom: 1px solid var(--gris-clair);
+      padding: 0.75rem 1rem;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .search-bar input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 2px solid var(--gris-clair);
+      border-radius: 4px;
+      font-family: var(--police-titre);
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .search-bar input:focus { border-color: var(--orange); }
+    .search-bar button {
+      padding: 10px 20px;
+      background: var(--orange);
+      color: var(--noir);
+      border: none;
+      border-radius: 4px;
+      font-family: var(--police-titre);
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    .search-result-info {
+      font-family: var(--police-mono);
+      font-size: 0.75rem;
+      color: var(--gris-moyen);
+      padding: 0.5rem 1rem;
+      background: var(--blanc);
+      border-bottom: 1px solid var(--gris-clair);
+    }
+
+    .content { padding: 1rem; max-width: 900px; margin: 0 auto; }
+
+    /* Cards articles */
+    .articles-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      background: var(--blanc);
+      border: 1px solid var(--gris-clair);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .article-row {
+      display: flex;
+      align-items: center;
+      padding: 0.9rem 1rem;
+      border-bottom: 1px solid var(--gris-clair);
+      gap: 1rem;
+      transition: background 0.1s;
+    }
+    .article-row:last-child { border-bottom: none; }
+    .article-row:hover { background: #F9F9F9; }
+
+    .article-info { flex: 1; min-width: 0; }
+    .article-nom { font-weight: 600; font-size: 0.9rem; }
+    .article-ref { font-family: var(--police-mono); font-size: 0.7rem; color: var(--gris-moyen); margin-top: 2px; }
+    .article-loc { display: flex; gap: 0.75rem; margin-top: 4px; flex-wrap: wrap; }
+    .loc-tag {
+      font-size: 0.72rem;
+      color: var(--gris-moyen);
+      background: #F0F0F0;
+      padding: 2px 7px;
+      border-radius: 3px;
+      font-family: var(--police-mono);
+    }
+
+    .article-stock { text-align: right; flex-shrink: 0; min-width: 80px; }
+    .stock-qty { font-family: var(--police-mono); font-weight: 700; font-size: 1.15rem; line-height: 1; }
+    .stock-unit { font-family: var(--police-mono); font-size: 0.65rem; color: var(--gris-moyen); margin-top: 2px; }
+    .stock-badge { display: inline-block; padding: 1px 6px; border-radius: 2px; font-size: 0.65rem; font-family: var(--police-mono); font-weight: 600; margin-top: 3px; }
+    .ok      { color: var(--vert); }
+    .bas     { color: #E65100; }
+    .rupture { color: var(--rouge); }
+    .badge-ok      { background: #E8F5E9; color: var(--vert); }
+    .badge-bas     { background: #FFF3E0; color: #E65100; }
+    .badge-rupture { background: #FFEBEE; color: var(--rouge); }
+
+    .alerte-banner {
+      background: #FFEBEE;
+      border-left: 4px solid var(--rouge);
+      padding: 0.75rem 1rem;
+      margin-bottom: 1rem;
+      border-radius: 0 3px 3px 0;
+      font-size: 0.85rem;
+    }
+    .alerte-banner strong { color: var(--rouge); }
+
+    .empty-msg { text-align: center; padding: 3rem; color: var(--gris-moyen); font-family: var(--police-mono); font-size: 0.85rem; }
+
+    footer {
+      background: var(--noir);
+      border-top: 2px solid var(--orange);
+      text-align: center;
+      padding: 0.75rem;
+      font-family: var(--police-mono);
+      font-size: 0.7rem;
+      color: #555;
+      margin-top: 2rem;
+    }
+    footer a { color: var(--orange); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-logo">
+    <span class="header-badge">SDEL</span>
+    <div>
+      <div class="header-title">Inventaire</div>
+      <div class="header-sub">Vinci Energies</div>
+    </div>
+  </div>
+  <div class="header-live">
+    <span class="live-dot"></span>
+    TEMPS RÉEL
+  </div>
+</header>
+
+<div class="stats-bar">
+  <div class="stat-item">
+    <div class="stat-val">{{ total_articles }}</div>
+    <div class="stat-lbl">Articles</div>
+  </div>
+  <div class="stat-item rouge">
+    <div class="stat-val">{{ stats.rupture }}</div>
+    <div class="stat-lbl">Ruptures</div>
+  </div>
+  <div class="stat-item orange">
+    <div class="stat-val">{{ stats.stock_bas }}</div>
+    <div class="stat-lbl">Stock bas</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-val">{{ stats.mouvements_aujourd_hui }}</div>
+    <div class="stat-lbl">Mvts/jour</div>
+  </div>
+</div>
+
+<!-- Barre de recherche -->
+<form method="GET" action="{{ url_for('main.inventaire_public') }}">
+  <div class="search-bar">
+    <input type="text" name="q" value="{{ recherche }}"
+           placeholder="Rechercher un article, une référence, un emplacement, un magasin…"
+           autofocus>
+    <button type="submit">Rechercher</button>
+    {% if recherche %}
+    <a href="{{ url_for('main.inventaire_public') }}"
+       style="padding:10px 14px; border:1px solid var(--gris-clair); border-radius:4px; font-size:0.85rem; color:var(--gris-moyen); text-decoration:none;">✕</a>
+    {% endif %}
+  </div>
+</form>
+
+{% if recherche %}
+<div class="search-result-info">
+  {{ articles|length }} résultat(s) pour « {{ recherche }} »
+</div>
+{% endif %}
+
+<div class="content">
+
+  {% if stats.rupture > 0 or stats.stock_bas > 0 %}
+  <div class="alerte-banner">
+    <strong>⚠ Attention :</strong>
+    {% if stats.rupture > 0 %}{{ stats.rupture }} article(s) en rupture de stock.{% endif %}
+    {% if stats.stock_bas > 0 %}{{ stats.stock_bas }} article(s) sous le seuil minimum.{% endif %}
+  </div>
+  {% endif %}
+
+  {% if articles %}
+  <div class="articles-grid">
+    {% for a in articles %}
+    <div class="article-row">
+      <div class="article-info">
+        <div class="article-nom">{{ a.nom }}</div>
+        <div class="article-ref">{{ a.reference }}</div>
+        {% if a.emplacement or a.magasin %}
+        <div class="article-loc">
+          {% if a.emplacement %}
+          <span class="loc-tag">📍 {{ a.emplacement }}</span>
+          {% endif %}
+          {% if a.magasin %}
+          <span class="loc-tag">🏪 {{ a.magasin }}</span>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+      <div class="article-stock">
+        {% if a.quantite == 0 %}
+          <div class="stock-qty rupture">0</div>
+          <div class="stock-unit">{{ a.unite }}</div>
+          <span class="stock-badge badge-rupture">Rupture</span>
+        {% elif a.stock_bas %}
+          <div class="stock-qty bas">{{ a.quantite }}</div>
+          <div class="stock-unit">{{ a.unite }}</div>
+          <span class="stock-badge badge-bas">Stock bas</span>
+        {% else %}
+          <div class="stock-qty ok">{{ a.quantite }}</div>
+          <div class="stock-unit">{{ a.unite }}</div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-msg">
+    {% if recherche %}
+      Aucun article ne correspond à « {{ recherche }} ».
+    {% else %}
+      Aucun article dans l'inventaire.
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+
+<footer>
+  SDEL Transport — Vinci Energies &nbsp;|&nbsp; Page publique — lecture seule<br>
+  <a href="/login">Accès espace gestion →</a>
+</footer>
+
+</body>
+</html>

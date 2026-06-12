@@ -1,0 +1,16 @@
+<!-- 
+  Dans base.html, trouve ce bloc dans la nav :
+  
+      {% if session.get('role') == 'admin' %}
+      <a href="{{ url_for('main.utilisateurs') }}" ...>Utilisateurs</a>
+      {% endif %}
+
+  Et remplace-le par :
+
+      {% if session.get('role') in ['admin', 'operateur'] %}
+      <a href="{{ url_for('main.categories') }}" class="{% if request.endpoint == 'main.categories' %}active{% endif %}">Catégories</a>
+      {% endif %}
+      {% if session.get('role') == 'admin' %}
+      <a href="{{ url_for('main.utilisateurs') }}" class="{% if request.endpoint == 'main.utilisateurs' %}active{% endif %}">Utilisateurs</a>
+      {% endif %}
+-->

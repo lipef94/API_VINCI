@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Viewport mobile — empêche le zoom automatique sur les inputs -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>{{ article.nom }} — SDEL Stock</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --orange:     #F5A623;
+      --orange-dk:  #D4880A;
+      --noir:       #1A1A1A;
+      --gris-fonce: #2C2C2C;
+      --gris-moyen: #4A4A4A;
+      --gris-clair: #E8E8E8;
+      --blanc:      #FAFAFA;
+      --rouge:      #D32F2F;
+      --vert:       #388E3C;
+      --police:     'IBM Plex Sans', sans-serif;
+      --mono:       'IBM Plex Mono', monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--police);
+      background: #F0F0F0;
+      color: var(--noir);
+      min-height: 100vh;
+      /* Évite le bounce iOS */
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* ===== HEADER ===== */
+    header {
+      background: var(--noir);
+      border-bottom: 3px solid var(--orange);
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .header-badge {
+      background: var(--orange);
+      color: var(--noir);
+      font-family: var(--mono);
+      font-weight: 600;
+      font-size: 0.75rem;
+      padding: 3px 8px;
+      letter-spacing: 1px;
+      flex-shrink: 0;
+    }
+    .header-info { flex: 1; min-width: 0; }
+    .header-nom {
+      color: var(--blanc);
+      font-weight: 700;
+      font-size: 1rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .header-ref {
+      color: #888;
+      font-size: 0.7rem;
+      font-family: var(--mono);
+    }
+
+    /* ===== FICHE ARTICLE ===== */
+    .article-card {
+      background: var(--blanc);
+      border-bottom: 1px solid var(--gris-clair);
+      padding: 1rem;
+    }
+
+    /* Ligne stock actuel — mise en avant */
+    .stock-actuel {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--noir);
+      color: var(--blanc);
+      padding: 1rem;
+      border-radius: 4px;
+      margin-bottom: 0.75rem;
+    }
+    .stock-label {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #888;
+    }
+    .stock-qty {
+      font-family: var(--mono);
+      font-weight: 700;
+      font-size: 2.5rem;
+      line-height: 1;
+    }
+    .stock-unite {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      color: #888;
+      margin-top: 4px;
+    }
+    /* Couleur selon statut */
+    .stock-qty.ok      { color: #66BB6A; }
+    .stock-qty.bas     { color: #FFA726; }
+    .stock-qty.rupture { color: #EF5350; }
+
+    /* Infos localisation */
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+    .info-item {
+      background: #F5F5F5;
+      border-radius: 3px;
+      padding: 0.6rem 0.75rem;
+    }
+    .info-lbl {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--gris-moyen);
+      margin-bottom: 3px;
+    }
+    .info-val {
+      font-size: 0.85rem;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .info-val.vide { color: #BBB; font-weight: 400; font-style: italic; }
+
+    /* Badge statut */
+    .badge-statut {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 2px;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+    .badge-ok      { background: #E8F5E9; color: var(--vert); }
+    .badge-bas     { background: #FFF3E0; color: #E65100; }
+    .badge-rupture { background: #FFEBEE; color: var(--rouge); }
+
+    /* ===== MESSAGES FLASH ===== */
+    .flash {
+      padding: 10px 14px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin: 0.75rem 1rem;
+      border-radius: 3px;
+      border-left: 4px solid transparent;
+    }
+    .flash.success { background: #E8F5E9; border-color: var(--vert);  color: #1B5E20; }
+    .flash.danger  { background: #FFEBEE; border-color: var(--rouge); color: #B71C1C; }
+    .flash.warning { background: #FFF8E1; border-color: var(--orange); color: #6D4C00; }
+
+    /* ===== SECTION MOUVEMENT ===== */
+    .section {
+      background: var(--blanc);
+      padding: 1rem;
+      margin-top: 0.5rem;
+    }
+    .section-title {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--gris-moyen);
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--gris-clair);
+    }
+
+    /* Choix du type de mouvement — 3 gros boutons tactiles */
+    .type-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .type-btn {
+      padding: 0.9rem 0.5rem;
+      border: 2px solid var(--gris-clair);
+      border-radius: 4px;
+      background: white;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .type-btn input[type=radio] { display: none; }
+    .type-btn .type-icon { font-size: 1.5rem; display: block; }
+    .type-btn .type-label {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 4px;
+      color: var(--gris-moyen);
+    }
+    /* Quand sélectionné */
+    .type-btn.selected-entree    { border-color: var(--vert);  background: #E8F5E9; }
+    .type-btn.selected-sortie    { border-color: var(--rouge); background: #FFEBEE; }
+    .type-btn.selected-correction { border-color: var(--orange); background: #FFF8E1; }
+    .type-btn.selected-entree    .type-label { color: var(--vert); font-weight: 700; }
+    .type-btn.selected-sortie    .type-label { color: var(--rouge); font-weight: 700; }
+    .type-btn.selected-correction .type-label { color: #E65100; font-weight: 700; }
+
+    /* Zone de saisie quantité avec gros boutons +/- */
+    .qty-saisie {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    /* Boutons +/- — cibles larges pour le pouce */
+    .qty-btn {
+      width: 56px;
+      height: 56px;
+      border: 2px solid var(--gris-clair);
+      border-radius: 4px;
+      background: white;
+      font-size: 1.5rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+      transition: all 0.1s;
+    }
+    .qty-btn.moins { color: var(--rouge); border-color: var(--rouge); }
+    .qty-btn.plus  { color: var(--vert);  border-color: var(--vert); }
+    .qty-btn:active { opacity: 0.7; transform: scale(0.95); }
+
+    /* Input quantité — grand pour faciliter la saisie sur mobile */
+    .qty-input-wrap { flex: 1; }
+    .qty-input-wrap label {
+      display: block;
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--gris-moyen);
+      margin-bottom: 4px;
+    }
+    .qty-input-wrap input {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid var(--gris-clair);
+      border-radius: 4px;
+      font-family: var(--mono);
+      font-size: 1.8rem;
+      font-weight: 700;
+      text-align: center;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .qty-input-wrap input:focus { border-color: var(--orange); }
+
+    /* Champ opérateur et commentaire */
+    .field-group { margin-bottom: 0.75rem; }
+    .field-group label {
+      display: block;
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--gris-moyen);
+      margin-bottom: 5px;
+    }
+    .field-group input,
+    .field-group textarea {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid var(--gris-clair);
+      border-radius: 4px;
+      font-family: var(--police);
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.15s;
+      background: white;
+    }
+    .field-group input:focus,
+    .field-group textarea:focus { border-color: var(--orange); }
+    .field-group textarea { min-height: 70px; resize: none; }
+
+    /* Bouton valider — pleine largeur, grand */
+    .btn-valider {
+      width: 100%;
+      padding: 16px;
+      background: var(--orange);
+      color: var(--noir);
+      border: none;
+      border-radius: 4px;
+      font-family: var(--police);
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+      transition: background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      margin-top: 0.25rem;
+    }
+    .btn-valider:active { background: var(--orange-dk); }
+
+    /* Aperçu du résultat (affiché dynamiquement) */
+    .resultat-preview {
+      background: #F5F5F5;
+      border-radius: 3px;
+      padding: 0.6rem 0.75rem;
+      margin-bottom: 0.75rem;
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      text-align: center;
+      color: var(--gris-moyen);
+    }
+    .resultat-preview strong { font-size: 1rem; }
+    .res-plus  { color: var(--vert); }
+    .res-minus { color: var(--rouge); }
+    .res-equal { color: var(--orange); }
+
+    /* ===== HISTORIQUE ARTICLE ===== */
+    .historique-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid var(--gris-clair);
+      font-size: 0.82rem;
+    }
+    .historique-item:last-child { border-bottom: none; }
+    .mvt-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      margin-top: 5px;
+      flex-shrink: 0;
+    }
+    .mvt-dot.entree    { background: var(--vert); }
+    .mvt-dot.sortie    { background: var(--rouge); }
+    .mvt-dot.correction { background: var(--orange); }
+    .mvt-type {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    .mvt-detail { color: var(--gris-moyen); font-size: 0.75rem; font-family: var(--mono); }
+
+    /* Lien bas de page */
+    .footer-link {
+      text-align: center;
+      padding: 1rem;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--gris-moyen);
+    }
+    .footer-link a { color: var(--orange-dk); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<header>
+  <span class="header-badge">SDEL</span>
+  <div class="header-info">
+    <div class="header-nom">{{ article.nom }}</div>
+    <div class="header-ref">{{ article.reference }}</div>
+  </div>
+</header>
+
+<!-- ===== MESSAGES FLASH ===== -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+    <div class="flash {{ category }}">
+      {% if category == 'success' %}✓{% elif category == 'danger' %}✕{% else %}⚠{% endif %}
+      {{ message }}
+    </div>
+  {% endfor %}
+{% endwith %}
+
+<!-- ===== FICHE ARTICLE ===== -->
+<div class="article-card">
+
+  <!-- Stock actuel mis en avant -->
+  <div class="stock-actuel">
+    <div>
+      <div class="stock-label">Stock actuel</div>
+      <div class="stock-qty {% if article.quantite == 0 %}rupture{% elif article.stock_bas %}bas{% else %}ok{% endif %}">
+        {{ article.quantite }}
+      </div>
+      <div class="stock-unite">{{ article.unite }}</div>
+    </div>
+    <div style="text-align:right;">
+      <div>
+        {% if article.quantite == 0 %}
+          <span class="badge-statut badge-rupture">Rupture</span>
+        {% elif article.stock_bas %}
+          <span class="badge-statut badge-bas">Stock bas</span>
+        {% else %}
+          <span class="badge-statut badge-ok">OK</span>
+        {% endif %}
+      </div>
+      <div style="color:#888; font-family:var(--mono); font-size:0.65rem; margin-top:6px;">
+        min. {{ article.quantite_min }} {{ article.unite }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Localisation : emplacement + magasin -->
+  <div class="info-grid">
+    <div class="info-item">
+      <div class="info-lbl">📍 Emplacement</div>
+      <div class="info-val {% if not article.emplacement %}vide{% endif %}">
+        {{ article.emplacement or 'Non renseigné' }}
+      </div>
+    </div>
+    <div class="info-item">
+      <div class="info-lbl">🏪 Magasin</div>
+      <div class="info-val {% if not article.magasin %}vide{% endif %}">
+        {{ article.magasin or 'Non renseigné' }}
+      </div>
+    </div>
+    <div class="info-item">
+      <div class="info-lbl">🏷 Catégorie</div>
+      <div class="info-val {% if not article.categorie_nom %}vide{% endif %}">
+        {{ article.categorie_nom or 'Aucune' }}
+      </div>
+    </div>
+    <div class="info-item">
+      <div class="info-lbl">📦 Fournisseur</div>
+      <div class="info-val {% if not article.fournisseur %}vide{% endif %}">
+        {{ article.fournisseur or 'Non renseigné' }}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+<!-- ===== FORMULAIRE DE MOUVEMENT ===== -->
+<div class="section">
+  <div class="section-title">Enregistrer un mouvement</div>
+
+  <form method="POST" action="{{ url_for('main.scan_mouvement', article_id=article.id) }}"
+        id="form-scan">
+
+    <!-- 1. Choix du type de mouvement -->
+    <div class="type-grid">
+
+      <label class="type-btn" id="btn-entree" onclick="selectionnerType('entree')">
+        <input type="radio" name="type_mouvement" value="entree" id="t-entree" checked>
+        <span class="type-icon">📦</span>
+        <span class="type-label">Entrée</span>
+      </label>
+
+      <label class="type-btn" id="btn-sortie" onclick="selectionnerType('sortie')">
+        <input type="radio" name="type_mouvement" value="sortie" id="t-sortie">
+        <span class="type-icon">📤</span>
+        <span class="type-label">Sortie</span>
+      </label>
+
+      <label class="type-btn" id="btn-correction" onclick="selectionnerType('correction')">
+        <input type="radio" name="type_mouvement" value="correction" id="t-correction">
+        <span class="type-icon">✏️</span>
+        <span class="type-label">Correction</span>
+      </label>
+
+    </div>
+
+    <!-- 2. Quantité avec boutons +/- tactiles -->
+    <div class="qty-saisie">
+      <button type="button" class="qty-btn moins" onclick="ajusterQty(-1)">−</button>
+      <div class="qty-input-wrap">
+        <label for="quantite">Quantité</label>
+        <input type="number" id="quantite" name="quantite" min="0" value="1"
+               oninput="mettreAJourPreview()">
+      </div>
+      <button type="button" class="qty-btn plus" onclick="ajusterQty(+1)">+</button>
+    </div>
+
+    <!-- Aperçu du stock résultant -->
+    <div class="resultat-preview" id="preview">
+      Chargement…
+    </div>
+
+    <!-- 3. Nom de l'opérateur (obligatoire — pas de session ici) -->
+    <div class="field-group">
+      <label for="operateur_nom">Votre nom *</label>
+      <input type="text" id="operateur_nom" name="operateur_nom"
+             placeholder="Ex: Jean Dupont"
+             autocomplete="name"
+             required>
+    </div>
+
+    <!-- 4. Emplacement (optionnel — peut être mis à jour) -->
+    <div class="field-group">
+      <label for="emplacement">Emplacement <span style="font-weight:400; text-transform:none;">(optionnel)</span></label>
+      <input type="text" id="emplacement" name="emplacement"
+             placeholder="Ex: Étagère B2, Local RDC"
+             value="{{ article.emplacement or '' }}">
+    </div>
+
+    <!-- 5. Commentaire optionnel -->
+    <div class="field-group">
+      <label for="commentaire">Commentaire <span style="font-weight:400; text-transform:none;">(optionnel)</span></label>
+      <textarea id="commentaire" name="commentaire"
+                placeholder="Ex: livraison, prise chantier Toulouse…"></textarea>
+    </div>
+
+    <button type="submit" class="btn-valider" onclick="return validerFormulaire()">
+      Valider le mouvement →
+    </button>
+
+  </form>
+</div>
+
+
+<!-- ===== HISTORIQUE DE L'ARTICLE ===== -->
+{% if historique %}
+<div class="section">
+  <div class="section-title">Derniers mouvements</div>
+
+  {% for m in historique %}
+  <div class="historique-item">
+    <div class="mvt-dot {{ m.type }}"></div>
+    <div>
+      <div>
+        <span class="mvt-type">{{ m.type }}</span>
+        &nbsp;
+        {% set delta = m.quantite_apres - m.quantite_avant %}
+        <strong>
+          {% if delta > 0 %}+{% elif delta < 0 %}{% endif %}
+          {{ "%.2f"|format(delta)|replace('.00','') }}
+          {{ '' }}
+        </strong>
+        → <strong>{{ "%.2f"|format(m.quantite_apres)|replace('.00','') }}</strong>
+      </div>
+      <div class="mvt-detail">
+        <!-- Opérateur : priorité à operateur_nom (saisi sur mobile), sinon user connecté -->
+        {{ m.operateur_nom or m.user_nom or 'Inconnu' }}
+        &nbsp;·&nbsp;
+        {{ m.created_at[:16] }}
+        {% if m.commentaire %} · {{ m.commentaire }}{% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+
+<!-- Lien vers page publique et connexion -->
+<div class="footer-link">
+  <a href="{{ url_for('main.inventaire_public') }}">Voir tout l'inventaire</a>
+  &nbsp;·&nbsp;
+  <a href="{{ url_for('main.login') }}">Espace gestion</a>
+</div>
+
+
+<script>
+  // ===== Variables globales =====
+  const stockActuel = {{ article.quantite }};
+  let typeActuel = 'entree'; // type de mouvement sélectionné
+
+  // ===== Au chargement : init =====
+  document.addEventListener('DOMContentLoaded', () => {
+    selectionnerType('entree');
+    mettreAJourPreview();
+  });
+
+  // ===== Sélection du type de mouvement =====
+  function selectionnerType(type) {
+    typeActuel = type;
+
+    // Réinitialise tous les boutons
+    document.querySelectorAll('.type-btn').forEach(b => {
+      b.className = 'type-btn';
+    });
+
+    // Active le bouton sélectionné
+    document.getElementById('btn-' + type).classList.add('selected-' + type);
+
+    // Coche le radio correspondant
+    document.getElementById('t-' + type).checked = true;
+
+    mettreAJourPreview();
+  }
+
+  // ===== Boutons +/- =====
+  function ajusterQty(delta) {
+    const input = document.getElementById('quantite');
+    const val = Math.max(0, (parseInt(input.value) || 0) + delta);
+    input.value = val;
+    mettreAJourPreview();
+  }
+
+  // ===== Aperçu du stock résultant =====
+  function mettreAJourPreview() {
+    const qty = parseFloat(document.getElementById('quantite').value) || 0;
+    const preview = document.getElementById('preview');
+
+    let stockResultat;
+    let symbole;
+    let classe;
+
+    if (typeActuel === 'entree') {
+      stockResultat = stockActuel + qty;
+      symbole = '+' + qty;
+      classe = 'res-plus';
+    } else if (typeActuel === 'sortie') {
+      stockResultat = Math.max(0, stockActuel - qty);
+      symbole = '-' + qty;
+      classe = 'res-minus';
+    } else {
+      // Correction : la quantité saisie est la nouvelle valeur absolue
+      stockResultat = qty;
+      symbole = '→';
+      classe = 'res-equal';
+    }
+
+    preview.innerHTML = `
+      Stock actuel : <strong>${stockActuel}</strong>
+      &nbsp;<span class="${classe}">${symbole}</span>&nbsp;
+      = <strong>${stockResultat}</strong>
+    `;
+  }
+
+  // ===== Validation avant envoi =====
+  function validerFormulaire() {
+    const operateur = document.getElementById('operateur_nom').value.trim();
+    if (!operateur) {
+      alert('Veuillez indiquer votre nom pour tracer le mouvement.');
+      document.getElementById('operateur_nom').focus();
+      return false;
+    }
+    const qty = parseFloat(document.getElementById('quantite').value) || 0;
+    if (qty <= 0 && typeActuel !== 'correction') {
+      alert('La quantité doit être supérieure à 0.');
+      return false;
+    }
+    return true;
+  }
+</script>
+
+</body>
+</html>

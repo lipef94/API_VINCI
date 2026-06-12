@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}Utilisateurs — SDEL Inventory{% endblock %}
+
+{% block extra_styles %}
+<style>
+  .users-layout {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 1.25rem;
+    align-items: flex-start;
+  }
+
+  .role-badge {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 2px;
+    font-size: 0.72rem;
+    font-family: var(--police-mono);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .role-admin     { background: rgba(245,166,35,0.2); color: var(--orange); }
+  .role-operateur { background: #E3F2FD; color: var(--bleu); }
+  .role-lecteur   { background: var(--gris-clair); color: var(--gris-moyen); }
+
+  .statut-actif    { color: var(--vert); font-family: var(--police-mono); font-size:0.78rem; }
+  .statut-inactif  { color: var(--rouge); font-family: var(--police-mono); font-size:0.78rem; }
+
+  @media (max-width: 900px) {
+    .users-layout { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <h1>Gestion des <span>utilisateurs</span></h1>
+</div>
+
+<div class="users-layout">
+
+  <div>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Identifiant</th>
+            <th>Nom complet</th>
+            <th>Rôle</th>
+            <th>Statut</th>
+            <th>Créé le</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if users %}
+            {% for u in users %}
+            <tr>
+              <td style="font-family:var(--police-mono); font-weight:600; font-size:0.875rem;">{{ u.username }}</td>
+              <td>{{ u.nom_complet or '—' }}</td>
+              <td><span class="role-badge role-{{ u.role }}">{{ u.role }}</span></td>
+              <td>
+                {% if u.actif %}
+                  <span class="statut-actif">● Actif</span>
+                {% else %}
+                  <span class="statut-inactif">● Inactif</span>
+                {% endif %}
+              </td>
+              <td style="font-family:var(--police-mono); font-size:0.78rem; color:var(--gris-moyen);">
+                {{ u.created_at[:10] if u.created_at else '—' }}
+              </td>
+              <td style="white-space:nowrap;">
+                <button class="btn btn-sm btn-secondary"
+                        onclick="ouvrirReset({{ u.id }}, '{{ u.username }}')">
+                  🔑 Réinitialiser mdp
+                </button>
+                {% if u.id != session.get('user_id') %}
+                <form method="POST"
+                      action="{{ url_for('main.supprimer_utilisateur', user_id=u.id) }}"
+                      style="display:inline;"
+                      onsubmit="return confirm('Supprimer l\'utilisateur {{ u.username }} ?')">
+                  <button type="submit" class="btn btn-sm btn-danger">Supprimer</button>
+                </form>
+                {% else %}
+                <span style="font-size:0.75rem; color:var(--gris-moyen); font-family:var(--police-mono);">(vous)</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="6" style="text-align:center; padding:2rem; color:var(--gris-moyen); font-family:var(--police-mono); font-size:0.85rem;">
+                Aucun utilisateur trouvé.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Créer un utilisateur</div>
+    <form method="POST" action="{{ url_for('main.ajouter_utilisateur') }}">
+
+      <div class="form-group">
+        <label for="username">Identifiant *</label>
+        <input type="text" id="username" name="username" placeholder="Ex: j.dupont" required>
+      </div>
+
+      <div class="form-group">
+        <label for="nom_complet">Nom complet</label>
+        <input type="text" id="nom_complet" name="nom_complet" placeholder="Ex: Jean Dupont">
+      </div>
+
+      <div class="form-group">
+        <label for="password">Mot de passe *</label>
+        <input type="password" id="password" name="password" placeholder="Minimum 6 caractères" required>
+      </div>
+
+      <div class="form-group">
+        <label for="role">Rôle *</label>
+        <select id="role" name="role">
+          <option value="lecteur">Lecteur — consultation uniquement</option>
+          <option value="operateur">Opérateur — peut modifier les stocks</option>
+          <option value="admin">Administrateur — accès complet</option>
+        </select>
+      </div>
+
+      <div style="background:#FFF8E1; border-left:3px solid var(--orange); padding:0.6rem 0.75rem; font-size:0.78rem; margin-bottom:1rem; border-radius:0 2px 2px 0;">
+        <strong>Rôles :</strong><br>
+        <b>Lecteur</b> : voir les stocks sans modifier.<br>
+        <b>Opérateur</b> : modifier les stocks et articles.<br>
+        <b>Admin</b> : tout, y compris gérer les utilisateurs.
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">
+        Créer l'utilisateur
+      </button>
+    </form>
+  </div>
+
+</div>
+
+<!-- Modal reset password -->
+<div id="modal-reset" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:200; align-items:center; justify-content:center;">
+  <div style="background:var(--blanc); border-top:4px solid var(--orange); padding:1.5rem; width:100%; max-width:400px; border-radius:4px;">
+    <div class="card-title">Réinitialiser le mot de passe de <span id="reset-username"></span></div>
+    <form method="POST" id="reset-form" action="">
+      <div class="form-group">
+        <label for="nouveau_mdp">Nouveau mot de passe *</label>
+        <input type="text" id="nouveau_mdp" name="nouveau_mdp" required placeholder="Minimum 6 caractères">
+      </div>
+      <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+        <button type="submit" class="btn btn-primary" style="flex:1; justify-content:center;">Enregistrer</button>
+        <button type="button" class="btn btn-secondary" onclick="fermerReset()">Annuler</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function ouvrirReset(id, username) {
+  document.getElementById('reset-username').textContent = username;
+  document.getElementById('reset-form').action = '/utilisateurs/reset-password/' + id;
+  document.getElementById('nouveau_mdp').value = '';
+  document.getElementById('modal-reset').style.display = 'flex';
+}
+function fermerReset() {
+  document.getElementById('modal-reset').style.display = 'none';
+}
+</script>
+
+{% endblock %}

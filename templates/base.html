@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}SDEL Inventory{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --orange:      #F5A623;
+      --orange-dark: #D4880A;
+      --noir:        #1A1A1A;
+      --gris-fonce:  #2C2C2C;
+      --gris-moyen:  #4A4A4A;
+      --gris-clair:  #E8E8E8;
+      --blanc:       #FAFAFA;
+      --rouge:       #D32F2F;
+      --vert:        #388E3C;
+      --bleu:        #1565C0;
+      --vinci-bleu:  #003B7A;
+      --police-titre: 'IBM Plex Sans', sans-serif;
+      --police-mono:  'IBM Plex Mono', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--police-titre);
+      background: #F0F0F0;
+      color: var(--noir);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    nav {
+      background: var(--noir);
+      border-bottom: 3px solid var(--orange);
+      padding: 0 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+    }
+    .nav-logo-badge {
+      background: var(--orange);
+      color: var(--noir);
+      font-family: var(--police-mono);
+      font-weight: 600;
+      font-size: 0.8rem;
+      padding: 3px 8px;
+      letter-spacing: 1px;
+    }
+    .nav-logo-text {
+      color: var(--blanc);
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: 0.5px;
+    }
+    .nav-logo-sub {
+      color: #888;
+      font-size: 0.68rem;
+      font-family: var(--police-mono);
+      letter-spacing: 0.5px;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 0.15rem;
+    }
+    .nav-links a {
+      color: #AAAAAA;
+      text-decoration: none;
+      font-size: 0.83rem;
+      font-weight: 500;
+      padding: 6px 11px;
+      border-radius: 3px;
+      transition: color 0.15s, background 0.15s;
+    }
+    .nav-links a:hover,
+    .nav-links a.active {
+      color: var(--blanc);
+      background: rgba(245,166,35,0.15);
+    }
+    .nav-links .nav-sep {
+      width: 1px;
+      height: 20px;
+      background: #333;
+      margin: 0 4px;
+    }
+
+    .nav-user {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .nav-user-name {
+      color: #AAAAAA;
+      font-size: 0.8rem;
+      font-family: var(--police-mono);
+    }
+    .nav-user-role {
+      background: rgba(245,166,35,0.2);
+      color: var(--orange);
+      font-size: 0.7rem;
+      font-family: var(--police-mono);
+      padding: 2px 7px;
+      border-radius: 2px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .nav-logout {
+      color: #AAAAAA !important;
+      font-size: 0.8rem !important;
+      border: 1px solid #444 !important;
+      padding: 4px 10px !important;
+    }
+    .nav-logout:hover {
+      border-color: var(--orange) !important;
+      color: var(--orange) !important;
+      background: transparent !important;
+    }
+
+    main {
+      flex: 1;
+      padding: 1.5rem;
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 2px solid var(--gris-clair);
+    }
+    .page-header h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.5px; }
+    .page-header h1 span { color: var(--orange); }
+
+    .flash-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0.75rem 1.5rem 0;
+    }
+    .flash {
+      padding: 10px 14px;
+      border-radius: 3px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+      border-left: 4px solid transparent;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .flash.success { background: #E8F5E9; border-color: var(--vert);  color: #1B5E20; }
+    .flash.danger  { background: #FFEBEE; border-color: var(--rouge); color: #B71C1C; }
+    .flash.warning { background: #FFF8E1; border-color: var(--orange); color: #6D4C00; }
+    .flash.info    { background: #E3F2FD; border-color: var(--bleu);  color: #0D47A1; }
+
+    .card {
+      background: var(--blanc);
+      border: 1px solid var(--gris-clair);
+      border-radius: 4px;
+      padding: 1.25rem;
+    }
+    .card-title {
+      font-size: 0.75rem;
+      font-family: var(--police-mono);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--gris-moyen);
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--gris-clair);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 8px 16px;
+      border-radius: 3px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      font-family: var(--police-titre);
+      cursor: pointer;
+      border: 2px solid transparent;
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+    .btn-primary   { background: var(--orange); color: var(--noir); border-color: var(--orange); }
+    .btn-primary:hover { background: var(--orange-dark); border-color: var(--orange-dark); }
+    .btn-secondary { background: transparent; color: var(--noir); border-color: var(--gris-clair); }
+    .btn-secondary:hover { border-color: var(--gris-moyen); background: var(--gris-clair); }
+    .btn-danger    { background: transparent; color: var(--rouge); border-color: var(--rouge); }
+    .btn-danger:hover { background: var(--rouge); color: white; }
+    .btn-sm { padding: 4px 10px; font-size: 0.8rem; }
+
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 2px; font-size: 0.75rem; font-family: var(--police-mono); font-weight: 600; letter-spacing: 0.5px; }
+    .badge-ok      { background: #E8F5E9; color: var(--vert); }
+    .badge-bas     { background: #FFF8E1; color: #E65100; }
+    .badge-rupture { background: #FFEBEE; color: var(--rouge); }
+
+    .table-container { overflow-x: auto; border-radius: 4px; border: 1px solid var(--gris-clair); }
+    table { width: 100%; border-collapse: collapse; background: var(--blanc); font-size: 0.875rem; }
+    thead { background: var(--noir); color: var(--blanc); }
+    thead th { padding: 10px 14px; text-align: left; font-family: var(--police-mono); font-size: 0.75rem; letter-spacing: 1px; text-transform: uppercase; font-weight: 600; }
+    tbody tr { border-bottom: 1px solid var(--gris-clair); transition: background 0.1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #F5F5F5; }
+    tbody td { padding: 10px 14px; vertical-align: middle; }
+
+    .form-group { margin-bottom: 1rem; }
+    label { display: block; font-size: 0.8rem; font-weight: 600; font-family: var(--police-mono); letter-spacing: 0.5px; text-transform: uppercase; color: var(--gris-moyen); margin-bottom: 5px; }
+    input[type=text], input[type=password], input[type=number],
+    select, textarea {
+      width: 100%; padding: 9px 12px; border: 2px solid var(--gris-clair);
+      border-radius: 3px; font-family: var(--police-titre); font-size: 0.9rem;
+      background: white; color: var(--noir); transition: border-color 0.15s; outline: none;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--orange); }
+    textarea { resize: vertical; min-height: 80px; }
+
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+    footer {
+      background: var(--noir);
+      color: #555;
+      text-align: center;
+      font-size: 0.72rem;
+      font-family: var(--police-mono);
+      padding: 10px;
+      border-top: 2px solid var(--orange);
+      letter-spacing: 0.5px;
+    }
+    footer .footer-vinci { color: #003B7A; font-weight: 600; }
+
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .form-grid-2 { grid-template-columns: 1fr; }
+      main { padding: 1rem; }
+    }
+  </style>
+  {% block extra_styles %}{% endblock %}
+</head>
+<body>
+
+  {% if session.get('user_id') %}
+  <nav>
+    <a href="{{ url_for('main.dashboard') }}" class="nav-logo">
+      <span class="nav-logo-badge">SDEL</span>
+      <div style="border-left:1px solid #444; padding-left:0.75rem; margin-left:0.25rem;">
+        <div class="nav-logo-text">Inventaire</div>
+        <div class="nav-logo-sub">Gestion des Stocks</div>
+      </div>
+    </a>
+
+    <div class="nav-links">
+      <a href="{{ url_for('main.dashboard') }}"  class="{% if request.endpoint == 'main.dashboard' %}active{% endif %}">Dashboard</a>
+      <a href="{{ url_for('main.inventaire') }}" class="{% if 'inventaire' in request.endpoint and 'public' not in request.endpoint %}active{% endif %}">Inventaire</a>
+      <a href="{{ url_for('main.historique') }}" class="{% if request.endpoint == 'main.historique' %}active{% endif %}">Historique</a>
+      <a href="{{ url_for('main.qrcode_page') }}" class="{% if 'qrcode' in request.endpoint %}active{% endif %}">QR Codes</a>
+      {% if session.get('role') == 'admin' %}
+      <div class="nav-sep"></div>
+      <a href="{{ url_for('main.utilisateurs') }}" class="{% if request.endpoint == 'main.utilisateurs' %}active{% endif %}">Utilisateurs</a>
+      {% endif %}
+    </div>
+
+    <div class="nav-user">
+      <span class="nav-user-name">{{ session.get('nom_complet', '') }}</span>
+      <span class="nav-user-role">{{ session.get('role', '') }}</span>
+      <a href="{{ url_for('main.logout') }}" class="btn nav-logout">Déconnexion</a>
+    </div>
+  </nav>
+  {% endif %}
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-container">
+      {% for category, message in messages %}
+        <div class="flash {{ category }}">
+          {% if category == 'success' %}✓{% elif category == 'danger' %}✕{% elif category == 'warning' %}⚠{% else %}ℹ{% endif %}
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endwith %}
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer>
+    SDEL Transport Services &nbsp;·&nbsp; <span class="footer-vinci">VINCI Energies</span>
+  </footer>
+
+</body>
+</html>

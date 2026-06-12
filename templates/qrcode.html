@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+{% block title %}QR Codes — SDEL Inventory{% endblock %}
+
+{% block extra_styles %}
+<style>
+  .qr-section { margin-bottom: 2rem; }
+
+  .qr-general-wrapper {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+  }
+
+  .qr-card {
+    background: var(--blanc);
+    border: 1px solid var(--gris-clair);
+    border-radius: 4px;
+    padding: 1.5rem;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .qr-card img {
+    max-width: 260px;
+    width: 100%;
+    border: 1px solid var(--gris-clair);
+    display: block;
+    margin: 0 auto 1rem;
+  }
+
+  .qr-info { flex: 1; min-width: 260px; }
+
+  .url-box {
+    background: var(--noir);
+    color: var(--orange);
+    font-family: var(--police-mono);
+    font-size: 0.85rem;
+    padding: 0.75rem 1rem;
+    border-radius: 3px;
+    word-break: break-all;
+    margin: 0.75rem 0;
+    letter-spacing: 0.3px;
+  }
+
+  /* Tableau articles + QR */
+  .articles-qr-table .qr-mini {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    border: 1px solid var(--gris-clair);
+    display: block;
+  }
+
+  .filters-bar {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+    background: var(--blanc);
+    border: 1px solid var(--gris-clair);
+    border-radius: 4px;
+    padding: 1rem;
+  }
+  .filters-bar .form-group { margin-bottom: 0; flex: 1; min-width: 200px; }
+  .filters-bar input { padding: 8px 10px; font-size: 0.85rem; }
+
+  /* Modal QR plein écran */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box {
+    background: var(--blanc);
+    border-top: 4px solid var(--orange);
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 380px;
+    border-radius: 4px;
+    text-align: center;
+  }
+  .modal-box img { max-width: 300px; width: 100%; border: 1px solid var(--gris-clair); margin: 1rem auto; display: block; }
+  .modal-nom { font-weight: 700; font-size: 1.1rem; margin-bottom: 0.25rem; }
+  .modal-ref { font-family: var(--police-mono); font-size: 0.8rem; color: var(--gris-moyen); margin-bottom: 1rem; }
+  .modal-url { font-family: var(--police-mono); font-size: 0.7rem; color: var(--gris-moyen); word-break: break-all; margin-bottom: 1rem; padding: 0.5rem; background: #F5F5F5; border-radius: 3px; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <h1>QR <span>Codes</span></h1>
+</div>
+
+<!-- ===== QR CODE GÉNÉRAL ===== -->
+<div class="qr-section">
+  <h2 style="font-size:1rem; font-weight:700; margin-bottom:1rem; color:var(--gris-moyen); font-family:var(--police-mono); text-transform:uppercase; letter-spacing:1px;">
+    QR Code général — inventaire public
+  </h2>
+
+  <div class="qr-general-wrapper">
+    <div class="qr-card">
+      <div class="card-title">À AFFICHER / IMPRIMER</div>
+      <img src="{{ url_for('main.qrcode_image') }}?t={{ range(99999)|random }}"
+           alt="QR Code Inventaire SDEL">
+      <a href="{{ url_for('main.qrcode_image') }}"
+         download="qrcode_inventaire_sdel.png"
+         class="btn btn-primary" style="width:100%; justify-content:center;">
+        ↓ Télécharger
+      </a>
+    </div>
+
+    <div class="qr-info">
+      <div class="card">
+        <div class="card-title">CE QR CODE POINTE VERS</div>
+        <p style="font-size:0.875rem; margin-bottom:0.5rem;">
+          La page publique de l'inventaire complet, accessible sans connexion, avec recherche :
+        </p>
+        <div class="url-box">{{ url_for('main.inventaire_public', _external=True) }}</div>
+        <p style="font-size:0.78rem; color:var(--gris-moyen);">
+          ✓ Lecture seule — temps réel — recherche par nom, référence, emplacement, magasin
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== QR CODES PAR ARTICLE ===== -->
+<div class="qr-section">
+  <h2 style="font-size:1rem; font-weight:700; margin-bottom:1rem; color:var(--gris-moyen); font-family:var(--police-mono); text-transform:uppercase; letter-spacing:1px;">
+    QR Codes articles — entrées / sorties par scan
+  </h2>
+
+  <div class="card" style="margin-bottom:1rem; background:#FFF8E1; border-left:3px solid var(--orange);">
+    <p style="font-size:0.875rem;">
+      Chaque article possède son propre QR code. En le scannant, l'opérateur accède directement
+      à la fiche de l'article pour enregistrer une <strong>entrée</strong>, une <strong>sortie</strong>
+      ou une <strong>correction</strong> — sans connexion requise.
+    </p>
+  </div>
+
+  <!-- Filtre recherche -->
+  <div class="filters-bar">
+    <div class="form-group">
+      <label for="recherche-art">Rechercher un article</label>
+      <input type="text" id="recherche-art" placeholder="Nom ou référence…" oninput="filtrerArticles(this.value)">
+    </div>
+  </div>
+
+  <div class="table-container articles-qr-table">
+    <table>
+      <thead>
+        <tr>
+          <th>QR</th>
+          <th>Référence</th>
+          <th>Article</th>
+          <th>Emplacement</th>
+          <th>Magasin</th>
+          <th>Stock</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-articles">
+        {% if articles %}
+          {% for a in articles %}
+          <tr data-search="{{ a.nom|lower }} {{ a.reference|lower }}">
+            <td>
+              <img class="qr-mini"
+                   src="{{ url_for('main.qrcode_article_image', article_id=a.id) }}"
+                   alt="QR {{ a.reference }}"
+                   loading="lazy">
+            </td>
+            <td style="font-family:var(--police-mono); font-size:0.78rem; color:var(--gris-moyen);">{{ a.reference }}</td>
+            <td style="font-weight:600;">{{ a.nom }}</td>
+            <td style="font-size:0.82rem;">{{ a.emplacement or '—' }}</td>
+            <td style="font-size:0.82rem;">{{ a.magasin or '—' }}</td>
+            <td>
+              <span style="font-family:var(--police-mono); font-weight:600;
+                {% if a.quantite == 0 %}color:var(--rouge){% elif a.stock_bas %}color:#E65100{% else %}color:var(--vert){% endif %}">
+                {{ a.quantite }} {{ a.unite }}
+              </span>
+            </td>
+            <td style="white-space:nowrap;">
+              <button type="button" class="btn btn-sm btn-primary"
+                      onclick="ouvrirQR({{ a.id }}, '{{ a.nom|replace("'", "\\'") }}', '{{ a.reference }}')">
+                ▦ Voir QR
+              </button>
+              <a href="{{ url_for('main.qrcode_article_image', article_id=a.id) }}"
+                 download="qr_{{ a.reference }}.png"
+                 class="btn btn-sm btn-secondary">↓ DL</a>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="7" style="text-align:center; padding:2rem; color:var(--gris-moyen); font-family:var(--police-mono); font-size:0.85rem;">
+              Aucun article — <a href="{{ url_for('main.ajouter_article') }}">créer le premier</a>
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal QR agrandi -->
+<div class="modal-overlay" id="modal-qr" onclick="if(event.target===this)fermerQR()">
+  <div class="modal-box">
+    <div class="modal-nom" id="qr-nom">—</div>
+    <div class="modal-ref" id="qr-ref">—</div>
+    <img id="qr-img" src="" alt="QR Code">
+    <div class="modal-url" id="qr-url">—</div>
+    <div style="display:flex; gap:0.5rem; justify-content:center;">
+      <a id="qr-dl" href="" download="" class="btn btn-primary">↓ Télécharger</a>
+      <button type="button" class="btn btn-secondary" onclick="fermerQR()">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const BASE_URL = window.location.origin;
+
+  function ouvrirQR(id, nom, ref) {
+    const imgUrl  = '/qrcode/article/' + id + '.png';
+    const scanUrl = BASE_URL + '/scan/article/' + id;
+    document.getElementById('qr-nom').textContent  = nom;
+    document.getElementById('qr-ref').textContent  = ref;
+    document.getElementById('qr-url').textContent  = scanUrl;
+    document.getElementById('qr-img').src          = imgUrl + '?t=' + Date.now();
+    document.getElementById('qr-dl').href          = imgUrl;
+    document.getElementById('qr-dl').download      = 'qr_' + ref + '.png';
+    document.getElementById('modal-qr').classList.add('open');
+  }
+
+  function fermerQR() {
+    document.getElementById('modal-qr').classList.remove('open');
+  }
+
+  function filtrerArticles(valeur) {
+    const v = valeur.toLowerCase();
+    document.querySelectorAll('#tbody-articles tr[data-search]').forEach(row => {
+      row.style.display = row.dataset.search.includes(v) ? '' : 'none';
+    });
+  }
+</script>
+
+{% endblock %}
