@@ -133,11 +133,13 @@ def inventaire():
     filtre_statut    = request.args.get("statut", "")
     filtre_magasin   = request.args.get("magasin", "")
     filtre_fournisseur = request.args.get("fournisseur", "")
+    filtre_ref_constructeur = request.args.get("ref_constructeur", "")
 
     articles = get_tous_articles()
 
     magasins    = sorted({a["magasin"]    for a in articles if a.get("magasin")})
     fournisseurs = sorted({a["fournisseur"] for a in articles if a.get("fournisseur")})
+    refs_constructeur = sorted({a["ref_constructeur"] for a in articles if a.get("ref_constructeur")})
 
     if recherche:
         articles = [a for a in articles if
@@ -148,6 +150,8 @@ def inventaire():
                     recherche in (a.get("emplacement") or "").lower() or
                     recherche in (a.get("magasin") or "").lower() or
                     recherche in (a.get("fournisseur") or "").lower()]
+    if filtre_ref_constructeur:
+        articles = [a for a in articles if a.get("ref_constructeur") == filtre_ref_constructeur]
     if filtre_magasin:
         articles = [a for a in articles if a.get("magasin") == filtre_magasin]
     if filtre_fournisseur:
@@ -159,8 +163,10 @@ def inventaire():
 
     return render_template("inventaire.html",
         articles=articles, magasins=magasins, fournisseurs=fournisseurs,
+        refs_constructeur=refs_constructeur,
         recherche=recherche, filtre_statut=filtre_statut,
-        filtre_magasin=filtre_magasin, filtre_fournisseur=filtre_fournisseur)
+        filtre_magasin=filtre_magasin, filtre_fournisseur=filtre_fournisseur,
+        filtre_ref_constructeur=filtre_ref_constructeur)
 
 
 @main.route("/inventaire/ajouter", methods=["GET", "POST"])
