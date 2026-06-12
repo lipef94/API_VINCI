@@ -114,6 +114,30 @@ def init_database():
                 conn.commit()
             except Exception:
                 conn.rollback()
+
+        # Migration : copie reference -> ref_constructeur si ref_constructeur est vide
+        try:
+            cursor.execute("""
+                UPDATE articles SET ref_constructeur = reference
+                WHERE ref_constructeur IS NULL AND reference IS NOT NULL
+            """)
+            conn.commit()
+        except Exception:
+            conn.rollback()
+
+        # Migration : copie reference -> ref_fournisseur si ref_fournisseur est vide
+        try:
+            cursor.execute("""
+                UPDATE articles SET ref_fournisseur = reference
+                WHERE ref_fournisseur IS NULL AND reference IS NOT NULL
+            """)
+            conn.commit()
+        except Exception:
+            conn.rollback()
+
+        # Nettoyage : supprime les doublons de ref_constructeur issus d'articles supprimés
+        # (articles qui n'existent plus mais dont la ref_constructeur bloque la création)
+        # Rien à faire ici — ON DELETE supprime bien la ligne entière
     else:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS articles (
